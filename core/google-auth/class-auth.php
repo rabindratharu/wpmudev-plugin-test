@@ -17,47 +17,61 @@ namespace WPMUDEV\PluginTest\Core\Google_Auth;
 defined( 'WPINC' ) || die;
 
 use WPMUDEV\PluginTest\Base;
-use WPMUDEV\PluginTest\Endpoints\V1\Auth_Confirm;
 use Google\Client;
 
+/**
+ * Class Auth
+ *
+ * Handles Google authentication functionality.
+ *
+ * @package WPMUDEV\PluginTest\Core\Google_Auth
+ */
 class Auth extends Base {
 	/**
 	 * Google client instance.
 	 *
 	 * @since 1.0.0
-	 *
 	 * @var Client
 	 */
 	private $client;
 
+	/**
+	 * Cached client ID.
+	 *
+	 * @since 1.0.0
+	 * @var string
+	 */
 	private $client_id = '';
 
+	/**
+	 * Cached client secret.
+	 *
+	 * @since 1.0.0
+	 * @var string
+	 */
 	private $client_secret = '';
 
-	private $redirect_url = '';
-
+	/**
+	 * Initialize the authentication.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
 	public function init() {
+		// Initialization logic can be added here if needed.
 	}
 
 	/**
 	 * Getter method for Client instance.
 	 *
-	 * It will always return the existing client instance.
-	 * If you need new instance set $new_instance param as true.
-	 *
-	 * @param bool $new_instance To get new instance.
-	 *
-	 * @return Client
 	 * @since 1.0.0
 	 *
+	 * @param bool $new_instance Whether to create a new instance.
+	 * @return Client
 	 */
-	public function client( $new_instance = false ) {
-		// If requested for new instance.
+	public function client( bool $new_instance = false ): Client {
 		if ( $new_instance || ! $this->client instanceof Client ) {
-			// Set new instance.
 			$this->client = new Client();
-
-			// Set our application name.
 			$this->client->setApplicationName( __( 'WPMU DEV Plugin Test', 'wpmudev-plugin-test' ) );
 		}
 
@@ -65,66 +79,101 @@ class Auth extends Base {
 	}
 
 	/**
-	 * Set up client id and client secret.
+	 * Set up client ID and client secret.
 	 *
-	 * @param string $client_id
-	 * @param string $client_secret
+	 * @since 1.0.0
 	 *
-	 * @return boolean
+	 * @param string $client_id     The client ID.
+	 * @param string $client_secret The client secret.
+	 * @return bool
 	 */
 	public function set_up( string $client_id = '', string $client_secret = '' ): bool {
-		$client_id     = ! empty( $client_id ) ? $client_id : $this->get_client_id();
-		$client_secret = ! empty( $client_secret ) ? $client_secret : $this->get_client_secret();
+		$client_id     = $client_id ?: $this->get_client_id();
+		$client_secret = $client_secret ?: $this->get_client_secret();
 
-		$this->client()->setClientId( $client_id );
-		$this->client()->setClientSecret( $client_secret );
-		// Todo: Set the return url based on new endpoint.
-		//$this->client()->setRedirectUri();
-		$this->client()->addScope( 'profile' );
-		$this->client()->addScope( 'email' );
+		if ( empty( $client_id ) || empty( $client_secret ) ) {
+			return false;
+		}
+
+		$client = $this->client();
+		$client->setClientId( $client_id );
+		$client->setClientSecret( $client_secret );
+		$client->addScope( 'profile' );
+		$client->addScope( 'email' );
+
+		// TODO: Set redirect URI based on endpoint.
+		// $client->setRedirectUri();
 
 		return true;
 	}
 
 	/**
-	 * Gets the client id.
+	 * Get the client ID.
 	 *
+	 * @since 1.0.0
 	 * @return string
 	 */
-	private function get_client_id() {
+	private function get_client_id(): string {
 		if ( empty( $this->client_id ) ) {
-			$settings = $this->get_settings();
-
-			$this->client_id = ! empty( $settings['client_id'] ) ? $settings['client_id'] : '';
+			$settings          = $this->get_settings();
+			$this->client_id = $settings['client_id'] ?? '';
 		}
 
 		return $this->client_id;
 	}
 
 	/**
-	 * Gets the client secret.
+	 * Get the client secret.
 	 *
+	 * @since 1.0.0
 	 * @return string
 	 */
-	private function get_client_secret() {
+	private function get_client_secret(): string {
 		if ( empty( $this->client_secret ) ) {
-			$settings = $this->get_settings();
-
-			$this->client_secret = ! empty( $settings['client_secret'] ) ? $settings['client_secret'] : '';
+			$settings             = $this->get_settings();
+			$this->client_secret = $settings['client_secret'] ?? '';
 		}
 
 		return $this->client_secret;
 	}
 
-	public function get_auth_url() {
+	/**
+	 * Check if credentials are configured.
+	 *
+	 * @since 1.0.0
+	 * @return bool
+	 */
+	public function is_configured(): bool {
+		$settings = $this->get_settings();
+		return ! empty( $settings['client_id'] ) && ! empty( $settings['client_secret'] );
+	}
+
+	/**
+	 * Get the authentication URL.
+	 *
+	 * @since 1.0.0
+	 * @return string
+	 */
+	public function get_auth_url(): string {
+		if ( ! $this->is_configured() ) {
+			return '';
+		}
+
+		$this->set_up();
 		return $this->client()->createAuthUrl();
 	}
 
-	protected function get_settings() {
+	/**
+	 * Get the plugin settings.
+	 *
+	 * @since 1.0.0
+	 * @return array
+	 */
+	protected function get_settings(): array {
 		static $settings = null;
 
-		if ( is_null( $settings ) ) {
-			$settings = get_option( 'wpmudev_plugin_test_settings' );
+		if ( null === $settings ) {
+			$settings = get_option( 'wpmudev_plugin_test_settings', [] );
 		}
 
 		return $settings;
