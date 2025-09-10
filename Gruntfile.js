@@ -22,13 +22,11 @@ module.exports = function (grunt) {
 		'tests/**',
 	]
 
-    const excludeCopyFilesPro = copyFiles
+	const excludeCopyFilesPro = copyFiles
 		.slice(0)
 		.concat([
 			'changelog.txt',
 		])
-
-	const changelog = grunt.file.read('.changelog')
 
 	grunt.initConfig({
 		pkg: grunt.file.readJSON('package.json'),
