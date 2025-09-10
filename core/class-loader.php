@@ -8,7 +8,7 @@
  * @author  WPMUDEV (https://wpmudev.com)
  * @package WPMUDEV_PluginTest
  *
- * @copyright (c) 2023, Incsub (http://incsub.com)
+ * @copyright (c) 2025, Incsub (http://incsub.com)
  */
 
 namespace WPMUDEV\PluginTest;
@@ -92,7 +92,7 @@ final class Loader extends Base {
 	 * @return void
 	 */
 	private function init() {
-		App\Admin_Pages\Auth::instance()->init();
-		Endpoints\V1\Auth::instance();
+		App\Admin_Pages\Google_Drive::instance()->init();
+		Endpoints\V1\Drive_API::instance()->init();
 	}
 }

@@ -9,7 +9,7 @@
  * @author  WPMUDEV (https://wpmudev.com)
  * @package WPMUDEV_PluginTest
  *
- * @copyright (c) 2023, Incsub (http://incsub.com)
+ * @copyright (c) 2025, Incsub (http://incsub.com)
  */
 
 namespace WPMUDEV\PluginTest;

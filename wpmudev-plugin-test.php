@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       WPMU DEV Plugin Test
+ * Plugin Name:       WPMU DEV Plugin Test - Forminator Developer Position
  * Description:       A plugin focused on testing coding skills.
  * Requires at least: 6.1
  * Requires PHP:      7.4
@@ -99,8 +99,9 @@ class WPMUDEV_PluginTest {
 
 // Init the plugin and load the plugin instance for the first time.
 add_action(
-	'plugins_loaded',
+	'init',
 	function () {
 		WPMUDEV_PluginTest::get_instance()->load();
-	}
+	},
+	9
 );

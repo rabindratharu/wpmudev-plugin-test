@@ -36,9 +36,6 @@
 		]
 	},
 	"autoload": {
-		"classmap": [
-			"core/",
-			"app/"
-		]
+        "classmap": ["core/", "app/"]
 	}
 }

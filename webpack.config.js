@@ -5,9 +5,9 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const defaultConfig = require("@wordpress/scripts/config/webpack.config");
 
 module.exports = {
-    ...defaultConfig,
+	...defaultConfig,
 	entry: {
-		'authsettingspage': './src/googleauth-page/main.jsx',
+		'drivetestpage': './src/googledrive-page/main.jsx',
 	},
 
 	output: {
@@ -22,9 +22,9 @@ module.exports = {
 	},
 
 	module: {
-        ...defaultConfig.module,
+		...defaultConfig.module,
 		rules: [
-            //...defaultConfig.module.rules,
+			//...defaultConfig.module.rules,
 			{
 				test: /\.(js|jsx)$/,
 				exclude: /node_modules/,
@@ -69,7 +69,7 @@ module.exports = {
 	},
 
 	plugins: [
-        ...defaultConfig.plugins,
+		...defaultConfig.plugins,
 		new CleanWebpackPlugin(),
 		new MiniCssExtractPlugin({
 			filename: '../css/[name].min.css',
