@@ -1,32 +1,46 @@
 module.exports = function (grunt) {
-	require('load-grunt-tasks')(grunt)
+	require('load-grunt-tasks')(grunt);
 
+	// Read composer.json to get required dependencies
+	let requiredDeps = [];
+	try {
+		const composer = grunt.file.readJSON('composer.json');
+		requiredDeps = Object.keys(composer.require || {})
+			.filter(dep => dep !== 'php') // Exclude 'php' as it’s not a vendor package
+			.map(dep => `vendor/${dep}/**`); // Map to vendor dependency paths
+	} catch (e) {
+		grunt.log.error('Error reading composer.json: ' + e.message);
+		return false; // Exit if composer.json is missing or invalid
+	}
+
+	// Base files to copy (excluding vendor initially)
 	const copyFiles = [
+		'assets/**',
 		'app/**',
 		'core/**',
 		'languages/**',
 		'uninstall.php',
 		'wpmudev-plugin-test.php',
-		'!vendor/**',
-		'!**/*.map',
-		'QUESTIONS.md',
 		'README.md',
-		'composer.json',
-		'package.json',
-		'Gruntfile.js',
-		'gulpfile.js',
-		'webpack.config.js',
-		'phpcs.ruleset.xml',
-		'phpunit.xml.dist',
-		'src/**',
-		'tests/**',
-	]
+		'!**/*.map', // Exclude source maps
+		'!**/.DS_Store', // Exclude macOS metadata
+		'!**/*.tmp', // Exclude temporary files
+	];
 
+	// Files for pro version (includes changelog.txt)
 	const excludeCopyFilesPro = copyFiles
 		.slice(0)
 		.concat([
 			'changelog.txt',
-		])
+			'vendor/autoload.php', // Include Composer autoloader
+			'vendor/composer/**', // Include Composer autoloader logic
+			...requiredDeps, // Include required dependency folders
+			'!vendor/**/tests/**', // Exclude test folders
+			'!vendor/**/docs/**', // Exclude documentation
+			'!vendor/**/.git/**', // Exclude .git folders
+			'!vendor/**/test/**', // Exclude additional test folders
+			'!vendor/**/examples/**', // Exclude example folders
+		]);
 
 	grunt.initConfig({
 		pkg: grunt.file.readJSON('package.json'),
