@@ -1,0 +1,15 @@
+// scss/maintenance.scss
+.wpmudev_posts_maintenance_wrap {
+    .sui-select[multiple] {
+        height: auto;
+        min-height: 100px;
+        
+        option {
+            padding: 8px 12px;
+        }
+    }
+    
+    .sui-progress-block {
+        margin-top: 15px;
+    }
+}

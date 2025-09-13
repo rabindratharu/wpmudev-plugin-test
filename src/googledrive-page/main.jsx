@@ -8,7 +8,6 @@ const data = window.wpmudevDriveTest || {};
 
 const WPMUDEV_DriveTest = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(data.authStatus || false);
-    const [hasCredentials, setHasCredentials] = useState(data.hasCredentials || false);
     const [showCredentials, setShowCredentials] = useState(!data.hasCredentials);
     const [isLoading, setIsLoading] = useState(false);
     const [files, setFiles] = useState([]);
@@ -44,7 +43,6 @@ const WPMUDEV_DriveTest = () => {
             const result = await response.json();
             if (result.success) {
                 setIsAuthenticated(result.is_authenticated);
-                setHasCredentials(result.has_credentials);
                 setShowCredentials(!result.has_credentials);
             }
         } catch (error) {
@@ -75,7 +73,6 @@ const WPMUDEV_DriveTest = () => {
             const result = await response.json();
     
             if (result.success) {
-                setHasCredentials(result.has_credentials || true);
                 setShowCredentials(false);
                 showNotice('Credentials saved successfully!');
                 // Update auth status after saving credentials
