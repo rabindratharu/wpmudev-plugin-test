@@ -3,12 +3,12 @@ import { Button, TextControl, Spinner, Notice } from '@wordpress/components';
 
 import "./scss/style.scss"
 
-const domElement = document.getElementById( window.wpmudevDriveTest.dom_element_id );
+const data = JSON.parse(wpmudevDriveTest || '{}');
 
 const WPMUDEV_DriveTest = () => {
-    const [isAuthenticated, setIsAuthenticated] = useState(window.wpmudevDriveTest.authStatus || false);
-    const [hasCredentials, setHasCredentials] = useState(window.wpmudevDriveTest.hasCredentials || false);
-    const [showCredentials, setShowCredentials] = useState(!window.wpmudevDriveTest.hasCredentials);
+    const [isAuthenticated, setIsAuthenticated] = useState(data.authStatus || false);
+    const [hasCredentials, setHasCredentials] = useState(data.hasCredentials || false);
+    const [showCredentials, setShowCredentials] = useState(!data.hasCredentials);
     const [isLoading, setIsLoading] = useState(false);
     const [files, setFiles] = useState([]);
     const [uploadFile, setUploadFile] = useState(null);
@@ -20,6 +20,10 @@ const WPMUDEV_DriveTest = () => {
     });
 
     useEffect(() => {
+        // Auto-load files when authenticated
+        if (isAuthenticated) {
+            loadFiles();
+        }
     }, [isAuthenticated]);
 
     const showNotice = (message, type = 'success') => {
@@ -28,22 +32,191 @@ const WPMUDEV_DriveTest = () => {
     };
 
     const handleSaveCredentials = async () => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(data.restEndpointSave, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json', // ADD THIS
+                    'X-WP-Nonce': data.nonce,
+                },
+                body: JSON.stringify({
+                    client_id: credentials.clientId,
+                    client_secret: credentials.clientSecret,
+                }),
+            });
+    
+            const result = await response.json();
+    
+            if (result.success) {
+                setHasCredentials(true);
+                setShowCredentials(false);
+                showNotice('Credentials saved successfully!');
+            } else {
+                showNotice(result.message || result.data?.message || 'Failed to save credentials', 'error');
+            }
+        } catch (error) {
+            showNotice('An error occurred while saving credentials', 'error');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleAuth = async () => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(data.restEndpointAuth, {
+                method: 'POST',
+                headers: {
+                    'X-WP-Nonce': data.nonce,
+                },
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                window.location.href = result.data.auth_url;
+            } else {
+                showNotice(result.data?.message || 'Failed to start authentication', 'error');
+            }
+        } catch (error) {
+            showNotice('An error occurred during authentication', 'error');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const loadFiles = async () => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(data.restEndpointFiles, {
+                method: 'GET',
+                headers: {
+                    'X-WP-Nonce': data.nonce,
+                },
+            });
 
+            const result = await response.json();
+
+            if (result.success) {
+                setFiles(result.data || []);
+            } else {
+                showNotice(result.data?.message || 'Failed to load files', 'error');
+            }
+        } catch (error) {
+            showNotice('An error occurred while loading files', 'error');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleUpload = async () => {
+        if (!uploadFile) return;
+
+        setIsLoading(true);
+        const formData = new FormData();
+        formData.append('file', uploadFile);
+
+        try {
+            const response = await fetch(data.restEndpointUpload, {
+                method: 'POST',
+                headers: {
+                    'X-WP-Nonce': data.nonce,
+                },
+                body: formData, // No Content-Type; browser sets multipart/form-data
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showNotice('File uploaded successfully!');
+                setUploadFile(null);
+                // Clear the input
+                const fileInput = document.querySelector('.drive-file-input');
+                if (fileInput) fileInput.value = '';
+                // Reload files
+                loadFiles();
+            } else {
+                showNotice(result.data?.message || 'Failed to upload file', 'error');
+            }
+        } catch (error) {
+            showNotice('An error occurred while uploading the file', 'error');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleDownload = async (fileId, fileName) => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(`${data.restEndpointDownload}/${fileId}`, {
+                method: 'GET',
+                headers: {
+                    'X-WP-Nonce': data.nonce,
+                },
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Create a blob and download
+                const byteCharacters = atob(result.content);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: result.mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showNotice('File downloaded successfully!');
+            } else {
+                showNotice(result.data?.message || 'Failed to download file', 'error');
+            }
+        } catch (error) {
+            showNotice('An error occurred while downloading the file', 'error');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleCreateFolder = async () => {
+        if (!folderName.trim()) return;
+
+        setIsLoading(true);
+        try {
+            const response = await fetch(data.restEndpointCreate, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': data.nonce,
+                },
+                body: JSON.stringify({
+                    name: folderName,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showNotice('Folder created successfully!');
+                setFolderName('');
+                // Reload files
+                loadFiles();
+            } else {
+                showNotice(result.data?.message || 'Failed to create folder', 'error');
+            }
+        } catch (error) {
+            showNotice('An error occurred while creating the folder', 'error');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -56,7 +229,7 @@ const WPMUDEV_DriveTest = () => {
             </div>
 
             {notice.message && (
-                <Notice status={notice.type} isDismissible onRemove=''>
+                <Notice status={notice.type} isDismissible onRemove={() => setNotice({ message: '', type: '' })}>
                     {notice.message}
                 </Notice>
             )}
@@ -97,7 +270,7 @@ const WPMUDEV_DriveTest = () => {
                         </div>
 
                         <div className="sui-box-settings-row">
-                            <span>Please use this URL <em>{window.wpmudevDriveTest.redirectUri}</em> in your Google API's <strong>Authorized redirect URIs</strong> field.</span>
+                            <span>Please use this URL <em>{data.redirectUri}</em> in your Google API's <strong>Authorized redirect URIs</strong> field.</span>
                         </div>
 
                         <div className="sui-box-settings-row">
@@ -113,7 +286,7 @@ const WPMUDEV_DriveTest = () => {
                             <Button
                                 variant="primary"
                                 onClick={handleSaveCredentials}
-                                disabled={isLoading}
+                                disabled={isLoading || !credentials.clientId || !credentials.clientSecret}
                             >
                                 {isLoading ? <Spinner /> : 'Save Credentials'}
                             </Button>
@@ -248,14 +421,24 @@ const WPMUDEV_DriveTest = () => {
                                             </div>
                                             <div className="file-actions">
                                                 {file.webViewLink && (
-                                                    <Button
-                                                        variant="link"
-                                                        size="small"
-                                                        href=''
-                                                        target="_blank"
-                                                    >
-                                                        View in Drive
-                                                    </Button>
+                                                    <>
+                                                        <Button
+                                                            variant="link"
+                                                            size="small"
+                                                            href={file.webViewLink}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                        >
+                                                            View in Drive
+                                                        </Button>
+                                                        <Button
+                                                            variant="link"
+                                                            size="small"
+                                                            onClick={() => handleDownload(file.id, file.name)}
+                                                        >
+                                                            Download
+                                                        </Button>
+                                                    </>
                                                 )}
                                             </div>
                                         </div>
@@ -274,8 +457,18 @@ const WPMUDEV_DriveTest = () => {
     );
 }
 
-if ( createRoot ) {
-    createRoot( domElement ).render(<StrictMode><WPMUDEV_DriveTest/></StrictMode>);
-} else {
-    render( <StrictMode><WPMUDEV_DriveTest/></StrictMode>, domElement );
-}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if the root element exists in the DOM
+    // Parse the JSON string into a JavaScript object
+
+    const rootElement = document.getElementById(data.dom_element_id);
+    console.log('Root Element:', data.restEndpointSave);
+    if (rootElement) {
+        // Render the component into the root element
+        const root = createRoot(rootElement);
+        root.render(
+            <StrictMode><WPMUDEV_DriveTest/></StrictMode>
+        );
+    }
+});

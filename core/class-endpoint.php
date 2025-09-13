@@ -13,7 +13,6 @@
 
 namespace WPMUDEV\PluginTest;
 
-use WPMUDEV\PluginTest\Base;
 use WP_REST_Response;
 use WP_REST_Controller;
 

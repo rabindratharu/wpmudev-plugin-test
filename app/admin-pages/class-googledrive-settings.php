@@ -5,10 +5,10 @@
  * @link          https://wpmudev.com/
  * @since         1.0.0
  *
- * @author        WPMUDEV (https://wpmudev.com)
+ * @author        WPMUDEV[](https://wpmudev.com)
  * @package       WPMUDEV\PluginTest
  *
- * @copyright (c) 2025, Incsub (http://incsub.com)
+ * @copyright (c) 2025, Incsub[](http://incsub.com)
  */
 
 namespace WPMUDEV\PluginTest\App\Admin_Pages;
@@ -143,32 +143,33 @@ class Google_Drive extends Base {
 			'strategy'  => true,
 			'localize'  => array(
 				'dom_element_id'       => $this->unique_id,
-				'restEndpointSave'     => 'wpmudev/v1/drive/save-credentials',
-				'restEndpointAuth'     => 'wpmudev/v1/drive/auth',
-				'restEndpointFiles'    => 'wpmudev/v1/drive/files',
-				'restEndpointUpload'   => 'wpmudev/v1/drive/upload',
-				'restEndpointDownload' => 'wpmudev/v1/drive/download',
-				'restEndpointCreate'   => 'wpmudev/v1/drive/create-folder',
+				'restEndpointSave'     => rest_url( 'wpmudev/v1/drive/save-credentials' ),
+				'restEndpointAuth'     => rest_url( 'wpmudev/v1/drive/auth' ),
+				'restEndpointFiles'    => rest_url( 'wpmudev/v1/drive/files' ),
+				'restEndpointUpload'   => rest_url( 'wpmudev/v1/drive/upload' ),
+				'restEndpointDownload' => rest_url( 'wpmudev/v1/drive/download' ),
+				'restEndpointCreate'   => rest_url( 'wpmudev/v1/drive/create-folder' ),
 				'nonce'                => wp_create_nonce( 'wp_rest' ),
-				'authStatus'           => $this->get_auth_status(),
-				'redirectUri'          => home_url( '/wp-json/wpmudev/v1/drive/callback' ),
-				'hasCredentials'       => ! empty( $this->creds['client_id'] ) && ! empty( $this->creds['client_secret'] ),
+				'authStatus' 		 => $this->is_authenticated(), // You'll need to implement this method
+				'redirectUri'          => esc_url( home_url( '/wp-json/wpmudev/v1/drive/callback' ) ),
+				'hasCredentials' 	   => ! empty( get_option( 'wpmudev_plugin_tests_auth', array() ) ),
 			),
 		);
 	}
 
 	/**
-	 * Checks if user is authenticated with Google Drive.
-	 *
-	 * @return bool
+	 * Check if user is authenticated with Google Drive.
 	 */
-	private function get_auth_status() {
+	private function is_authenticated() {
 		$access_token = get_option( 'wpmudev_drive_access_token', '' );
-		$expires_at   = get_option( 'wpmudev_drive_token_expires', 0 );
+		if ( empty( $access_token ) ) {
+			return false;
+		}
 		
-		return ! empty( $access_token ) && time() < $expires_at;
+		// Check if token is expired
+		$expires = get_option( 'wpmudev_drive_token_expires', 0 );
+		return time() < $expires;
 	}
-
 	/**
 	 * Gets assets data for given key.
 	 *
@@ -214,7 +215,7 @@ class Google_Drive extends Base {
 				);
 
 				if ( ! empty( $page_script['localize'] ) ) {
-					wp_localize_script( $handle, 'wpmudevDriveTest', $page_script['localize'] );
+					wp_localize_script( $handle, 'wpmudevDriveTest', wp_json_encode( $page_script['localize'] ) );
 				}
 
 				wp_enqueue_script( $handle );
