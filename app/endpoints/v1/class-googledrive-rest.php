@@ -23,6 +23,7 @@ use WP_Error;
 use Google_Client;
 use Google_Service_Drive;
 use Google_Service_Drive_DriveFile;
+use Exception;
 
 class Drive_API extends Endpoint {
 
@@ -153,6 +154,13 @@ class Drive_API extends Endpoint {
 			'callback'            => array( $this, 'create_folder' ),
 			'permission_callback' => array( $this, 'edit_permission' ),
 		) );
+
+		// Check auth status
+		register_rest_route( $this->namespace, '/' . $this->endpoint . '/auth-status', array(
+			'methods'             => 'GET',
+			'callback'            => array( $this, 'check_auth_status' ),
+			'permission_callback' => array( $this, 'edit_permission' ),
+		) );
 	}
 
 	/**
@@ -180,9 +188,16 @@ class Drive_API extends Endpoint {
 		// Reinitialize Google Client with new credentials
 		$this->setup_google_client();
 
+		// Clear any existing tokens when new credentials are saved
+		delete_option( 'wpmudev_drive_access_token' );
+		delete_option( 'wpmudev_drive_refresh_token' );
+		delete_option( 'wpmudev_drive_token_expires' );
+
 		$response = new WP_REST_Response( array(
 			'success' => true,
 			'message' => 'Credentials saved successfully',
+			'has_credentials' => true,
+			'is_authenticated' => false, // Always false after saving new credentials
 		), 200 );
 		
 		// Set proper headers for JSON response
@@ -240,6 +255,34 @@ class Drive_API extends Endpoint {
 		} catch ( Exception $e ) {
 			wp_die( 'Failed to get access token: ' . esc_html( $e->getMessage() ) );
 		}
+	}
+
+	/**
+	 * Check authentication status.
+	 */
+	public function check_auth_status( WP_REST_Request $request ) {
+		$has_credentials = ! empty( get_option( 'wpmudev_plugin_tests_auth', array() ) );
+		$is_authenticated = $this->is_authenticated();
+
+		return new WP_REST_Response( array(
+			'success' => true,
+			'has_credentials' => $has_credentials,
+			'is_authenticated' => $is_authenticated,
+		), 200 );
+	}
+
+	/**
+	 * Check if user is authenticated with Google Drive.
+	 */
+	private function is_authenticated() {
+		$access_token = get_option( 'wpmudev_drive_access_token', '' );
+		if ( empty( $access_token ) ) {
+			return false;
+		}
+		
+		// Check if token is expired
+		$expires = get_option( 'wpmudev_drive_token_expires', 0 );
+		return time() < $expires;
 	}
 
 	/**

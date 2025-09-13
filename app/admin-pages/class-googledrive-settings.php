@@ -145,16 +145,25 @@ class Google_Drive extends Base {
 				'dom_element_id'       => $this->unique_id,
 				'restEndpointSave'     => rest_url( 'wpmudev/v1/drive/save-credentials' ),
 				'restEndpointAuth'     => rest_url( 'wpmudev/v1/drive/auth' ),
+				'restEndpointAuthStatus' => rest_url( 'wpmudev/v1/drive/auth-status' ), // Added auth status endpoint
 				'restEndpointFiles'    => rest_url( 'wpmudev/v1/drive/files' ),
 				'restEndpointUpload'   => rest_url( 'wpmudev/v1/drive/upload' ),
 				'restEndpointDownload' => rest_url( 'wpmudev/v1/drive/download' ),
 				'restEndpointCreate'   => rest_url( 'wpmudev/v1/drive/create-folder' ),
 				'nonce'                => wp_create_nonce( 'wp_rest' ),
-				'authStatus' 		 => $this->is_authenticated(), // You'll need to implement this method
+				'authStatus'           => $this->is_authenticated(),
 				'redirectUri'          => esc_url( home_url( '/wp-json/wpmudev/v1/drive/callback' ) ),
-				'hasCredentials' 	   => ! empty( get_option( 'wpmudev_plugin_tests_auth', array() ) ),
+				'hasCredentials'       => $this->has_credentials(),
 			),
 		);
+	}
+
+	/**
+	 * Check if user has credentials saved.
+	 */
+	private function has_credentials() {
+		$creds = get_option( 'wpmudev_plugin_tests_auth', array() );
+		return ! empty( $creds['client_id'] ) && ! empty( $creds['client_secret'] );
 	}
 
 	/**
@@ -170,6 +179,7 @@ class Google_Drive extends Base {
 		$expires = get_option( 'wpmudev_drive_token_expires', 0 );
 		return time() < $expires;
 	}
+
 	/**
 	 * Gets assets data for given key.
 	 *
@@ -204,6 +214,13 @@ class Google_Drive extends Base {
 	 * @return void
 	 */
 	public function enqueue_assets() {
+		$current_screen = get_current_screen();
+		
+		// Only enqueue on our specific admin page
+		if ( empty( $current_screen->id ) || ! strpos( $current_screen->id, $this->page_slug ) ) {
+			return;
+		}
+
 		if ( ! empty( $this->page_scripts ) ) {
 			foreach ( $this->page_scripts as $handle => $page_script ) {
 				wp_register_script(
@@ -215,7 +232,8 @@ class Google_Drive extends Base {
 				);
 
 				if ( ! empty( $page_script['localize'] ) ) {
-					wp_localize_script( $handle, 'wpmudevDriveTest', wp_json_encode( $page_script['localize'] ) );
+					// FIX: Use wp_localize_script correctly (don't use wp_json_encode)
+					wp_localize_script( $handle, 'wpmudevDriveTest', $page_script['localize'] );
 				}
 
 				wp_enqueue_script( $handle );

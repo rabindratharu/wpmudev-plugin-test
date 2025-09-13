@@ -3,7 +3,8 @@ import { Button, TextControl, Spinner, Notice } from '@wordpress/components';
 
 import "./scss/style.scss"
 
-const data = JSON.parse(wpmudevDriveTest || '{}');
+// FIX: Don't parse wpmudevDriveTest - it's already an object from wp_localize_script
+const data = window.wpmudevDriveTest || {};
 
 const WPMUDEV_DriveTest = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(data.authStatus || false);
@@ -20,11 +21,36 @@ const WPMUDEV_DriveTest = () => {
     });
 
     useEffect(() => {
+        // Check auth status on component mount
+        checkAuthStatus();
+    }, []);
+
+    useEffect(() => {
         // Auto-load files when authenticated
         if (isAuthenticated) {
             loadFiles();
         }
     }, [isAuthenticated]);
+
+    const checkAuthStatus = async () => {
+        try {
+            const response = await fetch(data.restEndpointAuthStatus, {
+                method: 'GET',
+                headers: {
+                    'X-WP-Nonce': data.nonce,
+                },
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                setIsAuthenticated(result.is_authenticated);
+                setHasCredentials(result.has_credentials);
+                setShowCredentials(!result.has_credentials);
+            }
+        } catch (error) {
+            console.error('Failed to check auth status:', error);
+        }
+    };
 
     const showNotice = (message, type = 'success') => {
         setNotice({ message, type });
@@ -37,7 +63,7 @@ const WPMUDEV_DriveTest = () => {
             const response = await fetch(data.restEndpointSave, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json', // ADD THIS
+                    'Content-Type': 'application/json',
                     'X-WP-Nonce': data.nonce,
                 },
                 body: JSON.stringify({
@@ -49,11 +75,13 @@ const WPMUDEV_DriveTest = () => {
             const result = await response.json();
     
             if (result.success) {
-                setHasCredentials(true);
+                setHasCredentials(result.has_credentials || true);
                 setShowCredentials(false);
                 showNotice('Credentials saved successfully!');
+                // Update auth status after saving credentials
+                checkAuthStatus();
             } else {
-                showNotice(result.message || result.data?.message || 'Failed to save credentials', 'error');
+                showNotice(result.message || 'Failed to save credentials', 'error');
             }
         } catch (error) {
             showNotice('An error occurred while saving credentials', 'error');
@@ -75,9 +103,9 @@ const WPMUDEV_DriveTest = () => {
             const result = await response.json();
 
             if (result.success) {
-                window.location.href = result.data.auth_url;
+                window.location.href = result.auth_url || result.data?.auth_url;
             } else {
-                showNotice(result.data?.message || 'Failed to start authentication', 'error');
+                showNotice(result.message || 'Failed to start authentication', 'error');
             }
         } catch (error) {
             showNotice('An error occurred during authentication', 'error');
@@ -101,7 +129,7 @@ const WPMUDEV_DriveTest = () => {
             if (result.success) {
                 setFiles(result.data || []);
             } else {
-                showNotice(result.data?.message || 'Failed to load files', 'error');
+                showNotice(result.message || 'Failed to load files', 'error');
             }
         } catch (error) {
             showNotice('An error occurred while loading files', 'error');
@@ -123,7 +151,7 @@ const WPMUDEV_DriveTest = () => {
                 headers: {
                     'X-WP-Nonce': data.nonce,
                 },
-                body: formData, // No Content-Type; browser sets multipart/form-data
+                body: formData,
             });
 
             const result = await response.json();
@@ -137,7 +165,7 @@ const WPMUDEV_DriveTest = () => {
                 // Reload files
                 loadFiles();
             } else {
-                showNotice(result.data?.message || 'Failed to upload file', 'error');
+                showNotice(result.message || 'Failed to upload file', 'error');
             }
         } catch (error) {
             showNotice('An error occurred while uploading the file', 'error');
@@ -177,7 +205,7 @@ const WPMUDEV_DriveTest = () => {
                 URL.revokeObjectURL(url);
                 showNotice('File downloaded successfully!');
             } else {
-                showNotice(result.data?.message || 'Failed to download file', 'error');
+                showNotice(result.message || 'Failed to download file', 'error');
             }
         } catch (error) {
             showNotice('An error occurred while downloading the file', 'error');
@@ -210,7 +238,7 @@ const WPMUDEV_DriveTest = () => {
                 // Reload files
                 loadFiles();
             } else {
-                showNotice(result.data?.message || 'Failed to create folder', 'error');
+                showNotice(result.message || 'Failed to create folder', 'error');
             }
         } catch (error) {
             showNotice('An error occurred while creating the folder', 'error');
@@ -457,15 +485,9 @@ const WPMUDEV_DriveTest = () => {
     );
 }
 
-
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if the root element exists in the DOM
-    // Parse the JSON string into a JavaScript object
-
     const rootElement = document.getElementById(data.dom_element_id);
-    console.log('Root Element:', data.restEndpointSave);
     if (rootElement) {
-        // Render the component into the root element
         const root = createRoot(rootElement);
         root.render(
             <StrictMode><WPMUDEV_DriveTest/></StrictMode>
